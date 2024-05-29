@@ -6,6 +6,7 @@
 const config = {
   //
   //  The MathJax configuration
+  //  Could be send via post
   //
   loader: {
     load: ['adaptors/liteDOM', 'tex-svg']
@@ -62,9 +63,20 @@ const server = http.createServer(async (request, response) =>
             if (cache) adaptor.remove(cache);
           }
 
-          const output =
-            adaptor.doctype(html.document)
-            + adaptor.innerHTML(adaptor.body(html.document));
+          // MathJax adds html head and body to the content
+          // Generaed CSS style is put to the header
+          // If not called for an entire page, extract and deliver them witout html and body tags
+          let output = '';
+          if (post.fullPage == '1') {
+            output =
+              adaptor.doctype(html.document)
+              + adaptor.outerHTML(adaptor.root(html.document));
+          }
+          else {
+            output =
+              adaptor.innerHTML(adaptor.head(html.document))
+              + adaptor.innerHTML(adaptor.body(html.document));
+          }
 
           response.statusCode = 200;
           response.setHeader('Content-Type', 'text/html');
