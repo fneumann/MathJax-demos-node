@@ -57,8 +57,8 @@ const server = http.createServer(
       });
       AssistiveMmlHandler(RegisterHTMLHandler(adaptor));
 
-      const post = qs.parse(body);
-      const html = mathjax.document(post.html, {InputJax: tex, OutputJax: svg});
+      const post = JSON.parse(body);
+      const html = mathjax.document(post.page, {InputJax: tex, OutputJax: svg});
 
       //  Typeset the document
       html.render();
@@ -80,6 +80,7 @@ const server = http.createServer(
 
     }
     catch (error) {
+      console.log(error);
       response.statusCode = 500;
       response.end(error.message);
     }
@@ -87,6 +88,6 @@ const server = http.createServer(
 });
 
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Direct server running on port ${port}`);
 });
 

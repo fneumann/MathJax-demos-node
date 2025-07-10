@@ -3,7 +3,7 @@
  * run with: node service.js
  */
 
-  // Configuration for rendering simgle latex expressions
+// Configuration for rendering a whole page
 const page_config = {
   loader: {
     load: ['adaptors/liteDOM', 'tex-svg']
@@ -23,6 +23,9 @@ const page_config = {
   },
   'adaptors/liteDOM': {
     fontSize:  16
+  },
+  startup: {
+      document: '<html><head></head><body>[tex]e*m*c^2[/tex]</body></html>'
   }
 };
 
@@ -32,7 +35,7 @@ const math_config = {
     enableAssistiveMml: false
   },
   loader: {
-    load: ['adaptors/liteDOM', 'tex-svg']
+    load: ['adaptors/liteDOM', 'tex-chtml']
   },
   tex: {
     packages: ['base', 'autoload', 'require', 'ams', 'newcommand'],
@@ -74,18 +77,15 @@ const server = http.createServer(async (request, response) =>
       const post = JSON.parse(body);
       let output = 'Unknown request';
 
-      // IIAS 10
-      // post.math is pure latex code of a formula
+      // IIAS 10: post.math is pure latex code of a formula
       if (post.math) {
         output = await renderMath(math_config, post);
       }
-      // ILIAS 11 (plugin)
-      // post.page is html code of the page
+      // ILIAS 11: post.page is html code of the whole page
       else if (post.page) {
         output = await renderPage(page_config, post);
       }
 
-      console.log(output);
       response.statusCode = 200;
       response.setHeader('Content-Length', output.length);
       response.end(output);
@@ -123,38 +123,37 @@ async function renderMath(config, post) {
  * Render all latex expressions on a page
  */
 async function renderPage(config, post) {
-  const init = config;
-  init.startup = {
-    document: post.html
+  let config_with_page = config;
+  config_with_page.startup.document = post.page;
+
+  const MathJax = await require('mathjax-full').init(config_with_page);
+  if (!MathJax) {
+    return post.page;
   }
 
-  return await require('mathjax-full').init(init)
-    .then((MathJax) => {
+  const adaptor = MathJax.startup.adaptor;
+  const html = MathJax.startup.document;
+  if (Array.from(html.math).length === 0) {
+    adaptor.remove(html.outputJax.svgStyles);
+    const cache = adaptor.elementById(adaptor.body(html.document), 'MJX-SVG-global-cache');
+    if (cache) adaptor.remove(cache);
+  }
 
-      const adaptor = MathJax.startup.adaptor;
-      const html = MathJax.startup.document;
-      if (Array.from(html.math).length === 0) {
-        adaptor.remove(html.outputJax.svgStyles);
-        const cache = adaptor.elementById(adaptor.body(html.document), 'MJX-SVG-global-cache');
-        if (cache) adaptor.remove(cache);
-      }
+  // MathJax adds html head and body to the content
+  // Generaed CSS style is put to the header
+  // If not called for an entire page, extract and deliver them witout html and body tags
+  let output = '';
+  if (post.full_page) {
+    output =
+      adaptor.doctype(html.document)
+      + adaptor.outerHTML(adaptor.root(html.document));
+  }
+  else {
+    output =
+      adaptor.innerHTML(adaptor.head(html.document))
+      + adaptor.innerHTML(adaptor.body(html.document));
+  }
 
-      // MathJax adds html head and body to the content
-      // Generaed CSS style is put to the header
-      // If not called for an entire page, extract and deliver them witout html and body tags
-      let output = '';
-      if (post.fullPage == '1') {
-        output =
-          adaptor.doctype(html.document)
-          + adaptor.outerHTML(adaptor.root(html.document));
-      }
-      else {
-        output =
-          adaptor.innerHTML(adaptor.head(html.document))
-          + adaptor.innerHTML(adaptor.body(html.document));
-      }
-
-      return output;
-    })
+  return output;
 }
 
