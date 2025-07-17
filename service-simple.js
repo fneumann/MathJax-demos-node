@@ -12,7 +12,6 @@ const page_config = {
     packages: ['base', 'autoload', 'require', 'ams', 'newcommand'],
     inlineMath: [
       ['[tex]', '[/tex]'],
-      ['<span class="latex">', '</span>'],
       ['\\(', '\\)']],
     displayMath: [
       ['\\[', '\\]']],
@@ -35,13 +34,13 @@ const math_config = {
     enableAssistiveMml: false
   },
   loader: {
-    load: ['adaptors/liteDOM', 'tex-chtml']
+    load: ['adaptors/liteDOM', 'tex-svg']
   },
   tex: {
     packages: ['base', 'autoload', 'require', 'ams', 'newcommand'],
   },
   svg: {
-    fontCache: 'none',    // fonts must be in ever single svg
+    fontCache: 'none',    // fonts must be in every single svg
   },
 };
 
@@ -77,11 +76,9 @@ const server = http.createServer(async (request, response) =>
       const post = JSON.parse(body);
       let output = 'Unknown request';
 
-      // IIAS 10: post.math is pure latex code of a formula
       if (post.math) {
         output = await renderMath(math_config, post);
       }
-      // ILIAS 11: post.page is html code of the whole page
       else if (post.page) {
         output = await renderPage(page_config, post);
       }
@@ -121,6 +118,7 @@ async function renderMath(config, post) {
 
 /**
  * Render all latex expressions on a page
+ * PROBLEM: does work with simpe pages but not with ILIAS pages
  */
 async function renderPage(config, post) {
   let config_with_page = config;
